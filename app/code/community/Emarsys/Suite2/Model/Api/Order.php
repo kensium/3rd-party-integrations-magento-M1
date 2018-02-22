@@ -7,7 +7,7 @@ class Emarsys_Suite2_Model_Api_Order extends Emarsys_Suite2_Model_Api_Abstract
     protected $_exportedIds = array();
     protected $_processedCreditmemos = array();
     protected $_categoryNames;
-    
+
     /**
      * 
      * @return Mage_Sales_Model_Order
@@ -59,11 +59,34 @@ class Emarsys_Suite2_Model_Api_Order extends Emarsys_Suite2_Model_Api_Abstract
      * 
      * @return bool|int   Result
      */
-    protected function _uploadFile($src, $filename)
+    protected function _uploadFile($src, $filename, $isCatalog = false)
     {
-        if (!is_readable($src)) {
-            $this->log('Error uploading "' . $src . '": file is not readable');
+        if (!is_readable($src) || !file_exists($src)) {
+            $this->log('Error uploading "' . $src . '": file is not readable or not exists');
             return false;
+        }
+
+        if($isCatalog) { // SI Catalog Export CSV
+            //Skip the export as FullCatalogExport Will do this job
+            if($this->_getConfig()->getfullCatalogExportEnabled() /*&& $this->_getConfig()->getCatalogExportApiEnable()*/) {
+                return true;
+            }
+        } else { // SI Order Export CSV
+            if($this->_getConfig()->isSIAPIExportEnabled()){
+                $params = array();
+                $params['filepath'] = $src;
+                $params['merchant_id']  = $this->_getConfig()->getSIExportMerchantId();
+                $params['token']  = $this->_getConfig()->getSIExportToken();
+                //print_r($params); exit;
+
+                return Mage::getSingleton(
+                    'emarsys_suite2/apiexport',
+                    array(
+                        'merchant_id'  => $params['merchant_id'],
+                        'token'  => $params['token'],
+                    )
+                )->fullSIExportApi($params);
+            }
         }
 
         $client = new Varien_Io_Ftp();
@@ -78,15 +101,34 @@ class Emarsys_Suite2_Model_Api_Order extends Emarsys_Suite2_Model_Api_Abstract
                 'passive' => $this->_getConfig()->getSmartinsightFtpPassive()
             )
         );
+
+        $rawFilename = $filename;
+
         if ($dir = $this->_getConfig()->getSmartinsightFtpDir()) {
             $filename = rtrim($dir, '/') .'/'. $filename;
         }
 
-        $this->log('Uploading "' . $src . '"');
-        $result = $client->write($filename, $src);
-        $client->close();
-        $this->log('Uploaded "' . $src . '"');
-        return $result;
+        $sales_file_name_value = Mage::getStoreConfig('emarsys_suite2_smartinsight/ftp/sales_file_name');
+        $catalog_file_name_value = Mage::getStoreConfig('emarsys_suite2_smartinsight/ftp/catalog_file_name');
+
+        if(in_array($rawFilename, array($sales_file_name_value, $catalog_file_name_value ))) {
+            $this->log('Same File found in FTP location, Uploading Aborted. FileName :'.$filename);
+        }
+        else {
+            $this->log('Uploading "' . $src . '"');
+            $result = $client->write($filename, $src);
+            $client->close();
+            $this->log('Uploaded "' . $src . '"');
+
+                if($isCatalog){
+                    Mage::getModel('core/config')->saveConfig('emarsys_suite2_smartinsight/ftp/catalog_file_name', $rawFilename);
+                } else {
+                    Mage::getModel('core/config')->saveConfig('emarsys_suite2_smartinsight/ftp/sales_file_name', $rawFilename);
+                }
+
+            return $result;
+
+        }
     }
     
     /**
@@ -140,6 +182,9 @@ class Emarsys_Suite2_Model_Api_Order extends Emarsys_Suite2_Model_Api_Abstract
     protected function _getProductDataTmpFilename()
     {
         $key = 'products|' . $this->_getConfig()->getSmartinsightFtpHost() . '|' . $this->_getConfig()->getSmartinsightFtpUser() . '|' . $this->_getConfig()->getSmartinsightFtpDir();
+        if($this->_getConfig()->isSIAPIExportEnabled()) {
+            $key .= '|' . $this->_getConfig()->getWebsiteId();
+        }
         return Mage::getBaseDir('var') . '/' . md5($key) . '.csv';
     }
     
@@ -151,9 +196,12 @@ class Emarsys_Suite2_Model_Api_Order extends Emarsys_Suite2_Model_Api_Abstract
     protected function _getOrderDataTmpFilename()
     {
         $key = 'orders|' . $this->_getConfig()->getSmartinsightFtpHost() . '|' . $this->_getConfig()->getSmartinsightFtpUser() . '|' . $this->_getConfig()->getSmartinsightFtpDir();
+        if($this->_getConfig()->isSIAPIExportEnabled()) {
+            $key .= '|' . $this->_getConfig()->getWebsiteId();
+        }
         return Mage::getBaseDir('var') . '/' . md5($key) . '.csv';
     }
-    
+
     /**
      * Exports product data
      * 
@@ -180,17 +228,19 @@ class Emarsys_Suite2_Model_Api_Order extends Emarsys_Suite2_Model_Api_Abstract
                     ->setStoreId($this->_getConfig()->getStoreId())
                     ->addAttributeToSelect('name')
                     ->addCategoryIds()
+                    ->addUrlRewrite()
                     ->addAttributeToFilter('sku', array('IN' => $skuArray));
             foreach ($collection as $item) {
                 if (!$hasHeader) {
                     // Write refund item sku //
                     $refundItem = array(
-                        'website_id' => $this->_getConfig()->getWebsiteId(),
+                        'c_website_id' => $this->_getConfig()->getWebsiteId(),
                         'item' => 0,
                         'title' => 'refund',
-                        'category' => ''
+                        'category' => '',
+                        'link' => ''
                     );
-                    $io->streamWriteCsv(array_keys($refundItem), ';', '"');
+                    $io->streamWriteCsv(array_keys($refundItem), ',', '"');
                     $hasHeader = true;
                 }
 
@@ -214,7 +264,8 @@ class Emarsys_Suite2_Model_Api_Order extends Emarsys_Suite2_Model_Api_Abstract
                 }
 
                 $row['category'] = implode('|', $_categories);
-                $io->streamWriteCsv($row, ';', '"');
+                $row['link'] = $item->getProductUrl(true);
+                $io->streamWriteCsv($row, ',', '"');
                 $this->_processedItems[$filename][$item->getId()] = true;
             }
         }
@@ -222,14 +273,21 @@ class Emarsys_Suite2_Model_Api_Order extends Emarsys_Suite2_Model_Api_Abstract
         $this->log('Generated file "' . $filename. '"');
         $io->streamClose($filename);
     }
-    
+
     /**
      * @inheritdoc
      */
     protected function _exportWebsiteData($website)
     {
-        $this->_exportEntityData($website, $this->_getEntity());
-        $this->_exportEntityData($website, Mage::getModel('sales/order_creditmemo'));
+        $this->_getConfig()->setWebsite($website);
+        $batchSize = $this->_getConfig()->getMaxRecordsPerExportCount();
+        if($this->_getConfig()->isSIAPIExportEnabled() && $batchSize > 0){
+            $this->_exportEntityDataApi($website, $this->_getEntity());
+            $this->_exportEntityDataApi($website, Mage::getModel('sales/order_creditmemo'));
+        } else {
+            $this->_exportEntityData($website, $this->_getEntity());
+            $this->_exportEntityData($website, Mage::getModel('sales/order_creditmemo'));
+        }
     }
     
     /**
@@ -237,6 +295,7 @@ class Emarsys_Suite2_Model_Api_Order extends Emarsys_Suite2_Model_Api_Abstract
      */
     protected function _exportEntityData($website, $entity)
     {
+        $this->_getConfig()->setWebsite($website);
         $io = new Varien_Io_File();
         $filename = $this->_getOrderDataTmpFilename();
         $hasHeader = $io->fileExists($filename) && filesize($filename);
@@ -254,6 +313,7 @@ class Emarsys_Suite2_Model_Api_Order extends Emarsys_Suite2_Model_Api_Abstract
 
         /* @var $queue Emarsys_Suite2_Model_Resource_Queue_Collection */
         $queue = null;
+        Mage::getSingleton('emarsys_suite2/queue')->resetPage();
         while ($queue = Mage::getSingleton('emarsys_suite2/queue')->getNextBunch($entity, $website->getId(), $queue)) {
             $entityIds = $queue->getColumnValues('entity_id');
             $collection = Mage::getResourceModel($collectionCode)->addFieldToFilter('entity_id', array('in' => $entityIds));
@@ -266,11 +326,11 @@ class Emarsys_Suite2_Model_Api_Order extends Emarsys_Suite2_Model_Api_Abstract
 
                 foreach (Mage::getModel($payloadCode, $item)->toArray() as $row) {
                     if (!$hasHeader) {
-                        $io->streamWriteCsv(array_keys($row), ';', '"');
+                        $io->streamWriteCsv(array_keys($row), ',', '"');
                         $hasHeader = true;
                     }
 
-                    $io->streamWriteCsv($row, ';', '"');
+                    $io->streamWriteCsv($row, ',', '"');
                     $skus[$row['item']] = null;
                 }
             }
@@ -278,12 +338,95 @@ class Emarsys_Suite2_Model_Api_Order extends Emarsys_Suite2_Model_Api_Abstract
 	/* Script to add header row in CSV if the file is empty */
         if (!filesize($filename)) {
             $emptyFileHeader = $this->getSalesOrderHeader();
-            $io->streamWriteCsv($emptyFileHeader, ';', '"');
+            $io->streamWriteCsv($emptyFileHeader, ',', '"');
         }
 
         $io->streamClose();
         $this->log('Generated file "' . $filename . '"');
         $this->_exportProductData(array_keys($skus));
+
+        return $this;
+    }
+
+    protected function _exportEntityDataApi($website, $entity)
+    {
+        $this->_getConfig()->setWebsite($website);
+        $skus = array();
+        $batchSize = $this->_getConfig()->getMaxRecordsPerExportCount();
+        if($batchSize){
+            Mage::getSingleton('emarsys_suite2/queue')->setBatchSize($batchSize);
+        }
+        if ($entity instanceof Mage_Sales_Model_Order) {
+            $payloadCode = 'emarsys_suite2/api_payload_order';
+            $collectionCode = 'sales/order_collection';
+        } else {
+            $payloadCode = 'emarsys_suite2/api_payload_creditmemo';
+            $collectionCode = 'sales/order_creditmemo_collection';
+        }
+        /* @var $queue Emarsys_Suite2_Model_Resource_Queue_Collection */
+        $queue = null;
+        while ($queue = Mage::getSingleton('emarsys_suite2/queue')->getNextBunch($entity, $website->getId(), $queue)) {
+            $entityIds = $queue->getColumnValues('entity_id');
+            $collection = Mage::getResourceModel($collectionCode)->addFieldToFilter('entity_id', array('in' => $entityIds));
+            $io = new Varien_Io_File();
+            $filename = $this->_getOrderDataTmpFilename(true);
+            $hasHeader = $io->fileExists($filename) && filesize($filename);
+            $io->cd(Mage::getBaseDir('var'));
+            $this->log('Opening file "' . $filename . '" for order export');
+            $io->streamOpen($filename, 'a');
+
+            foreach ($collection as $item) {
+                if ($entity instanceof Mage_Sales_Model_Order) {
+                    $this->_processedEntities[] = $item->getId();
+                } else {
+                    $this->_processedCreditmemos[] = $item->getId();
+                }
+
+                foreach (Mage::getModel($payloadCode, $item)->toArray() as $row) {
+                    if (!$hasHeader) {
+                        $io->streamWriteCsv(array_keys($row), ',', '"');
+                        $hasHeader = true;
+                    }
+                    $io->streamWriteCsv($row, ',', '"');
+                    $skus[$row['item']] = null;
+                }
+            }
+
+            $io->streamClose();
+            chmod($filename, 0777);
+            $this->log('Generated file "' . $filename . '"');
+            $dstFilename = 'sales_items_' . date('Ymd') .'_'.$website->getId(). '.csv';
+            if (filesize($filename) && (count($this->_processedEntities) > 0 || count($this->_processedCreditmemos) > 0)) {
+                if($this->_uploadFile($filename, $dstFilename,false)){
+                    $io = new Varien_Io_File();
+                    if ($io->fileExists($filename)) {
+                        $io->rm($filename);
+                    }
+                    if ($this->_processedEntities) {
+                        $this->cleanupQueue(array_unique($this->_processedEntities));
+                        Mage::getResourceModel('emarsys_suite2/flag_order')->massSetExported($this->_processedEntities);
+                        Mage::getSingleton('emarsys_suite2/queue')->resetPage();
+                        $this->_processedEntities = array();
+                    }
+
+                    if ($this->_processedCreditmemos) {
+                        Mage::getModel('emarsys_suite2/queue')
+                            ->setMainEntity(Mage::getModel('sales/order_creditmemo'))
+                            ->removeEntities($this->_processedCreditmemos);
+                        Mage::getResourceModel('emarsys_suite2/flag_creditmemo')->massSetExported($this->_processedCreditmemos);
+                        Mage::getSingleton('emarsys_suite2/queue')->resetPage();
+                        $this->_processedCreditmemos = array();
+                    }
+                }
+            }
+            //$this->_exportProductData(array_keys($skus));
+        }
+        /* Script to add header row in CSV if the file is empty */
+        if (!filesize($filename)) {
+            $emptyFileHeader = $this->getSalesOrderHeader();
+            $io->streamWriteCsv($emptyFileHeader, ',', '"');
+        }
+
         return $this;
     }
     
@@ -314,35 +457,35 @@ class Emarsys_Suite2_Model_Api_Order extends Emarsys_Suite2_Model_Api_Abstract
         foreach (Mage::app()->getWebsites() as $website) {
 //            $this->_processedEntities = array();
             $this->_getConfig()->setWebsite($website);
-            $dstFilename = 'sales_items_'. date('Ymd') . '.csv';
+            // Uploading the file..
+            $dstFilename = 'sales_items_' . date('Ymd') . '.csv';
             if ($this->_uploadFile($this->_getOrderDataTmpFilename(), $dstFilename)) {
-                $dstFilename = 'products_'. date('Ymd') . '.csv';
-                if ($this->_uploadFile($this->_getProductDataTmpFilename(), $dstFilename)) {
+                $dstFilename = 'products_' . date('Ymd') . '.csv';
+                if ($this->_uploadFile($this->_getProductDataTmpFilename(), $dstFilename, true)) {
                     if (!$this->_getConfig()->getDebug()) {
                         // Remove temp files //
                         $io->rm($this->_getProductDataTmpFilename());
                         $io->rm($this->_getOrderDataTmpFilename());
                     }
+                        // Clean up queue //
+                        if ($this->_processedEntities) {
+                            $this->cleanupQueue(array_unique($this->_processedEntities));
+                            Mage::getResourceModel('emarsys_suite2/flag_order')->massSetExported($this->_processedEntities);
+                            $this->_processedEntities = array();
+                        }
 
-                    // Clean up queue //
-                    if ($this->_processedEntities) {
-                        $this->cleanupQueue(array_unique($this->_processedEntities));
-                        Mage::getResourceModel('emarsys_suite2/flag_order')->massSetExported($this->_processedEntities);
-                        $this->_processedEntities = array();
-                    }
-
-                    if ($this->_processedCreditmemos) {
-                        Mage::getModel('emarsys_suite2/queue')
+                        if ($this->_processedCreditmemos) {
+                            Mage::getModel('emarsys_suite2/queue')
                                 ->setMainEntity(Mage::getModel('sales/order_creditmemo'))
                                 ->removeEntities($this->_processedCreditmemos);
-                        Mage::getResourceModel('emarsys_suite2/flag_creditmemo')->massSetExported($this->_processedCreditmemos);
-                        $this->_processedCreditmemos = array();                        
-                    }
+                            Mage::getResourceModel('emarsys_suite2/flag_creditmemo')->massSetExported($this->_processedCreditmemos);
+                            $this->_processedCreditmemos = array();
+                        }
                 } else {
-                    $this->log('Failed uploading product data to SmartInsight FTP');
+                    $this->log('Failed uploading product data to SmartInsight FTP / API');
                 }
             } else {
-                $this->log('Failed uploading order data to SmartInsight FTP');
+                $this->log('Failed uploading order data to SmartInsight FTP / API');
             }
         }
     }
@@ -360,14 +503,15 @@ class Emarsys_Suite2_Model_Api_Order extends Emarsys_Suite2_Model_Api_Abstract
     public function getSalesOrderHeader()
     {
         return array(
-                'website_id',
-                'order',
-                'date',
-                'customer',
-                'item',
-                'quantity',
-                'unit_price',
-                'c_sales_amount',
-            );
+            'item',
+            'price',
+            'order',
+            'timestamp',
+            'email',
+            'quantity',
+            'f_c_sales_amount',
+            'i_website_id',
+        );
     }
 }
+

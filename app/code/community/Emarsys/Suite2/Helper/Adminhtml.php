@@ -15,12 +15,12 @@ class Emarsys_Suite2_Helper_Adminhtml extends Mage_Core_Helper_Abstract
     protected $_ignoredEmarsysNames = array('Magento Customer ID', 'Magento Subscriber ID', 'externalId');
     protected $_keyFields = array('key_id' => 'Magento Customer ID', 'subscriber_key_id' => 'Magento Subscriber ID', 'optin_id' => 'Opt-In', 'email' => 'Email');
     protected $_customFields = array(
-        'c_last_login'           => 'Last logged in',
-        'c_lifetime_order_total'  => 'Lifetime order total',
-        'c_avg_sales'             => 'Average sales',
-        'c_num_orders'            => 'Number of orders',
-        'c_last_order_time'       => 'Last purchase time',
-        'c_last_order_total'      => 'Last order total',
+//        'c_last_login'           => 'Last logged in',
+//        'c_lifetime_order_total'  => 'Lifetime order total',
+//        'c_avg_sales'             => 'Average sales',
+//        'c_num_orders'            => 'Number of orders',
+//        'c_last_order_time'       => 'Last purchase time',
+//        'c_last_order_total'      => 'Last order total',
 //        'c_last_purchased_product_1' => 'Last purchased product 1',
 //        'c_last_purchased_product_2' => 'Last purchased product 2',
 //        'c_last_purchased_product_3' => 'Last purchased product 3',

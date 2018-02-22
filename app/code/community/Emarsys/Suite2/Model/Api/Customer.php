@@ -155,6 +155,11 @@ class Emarsys_Suite2_Model_Api_Customer extends Emarsys_Suite2_Model_Api_Abstrac
             $this->_processedEntities = array_merge($this->_processedEntities, $processedEntities);
             // add to contact list //
 //            $this->_afterPayloadExport($payload);
+            /* Script to clear the Queue after a batch is exported */
+            if ($this->_processedEntities) {
+                $this->cleanupQueue(array_unique($this->_processedEntities));
+                $this->_processedEntities = array();
+            }
         }
     }
     
@@ -180,6 +185,7 @@ class Emarsys_Suite2_Model_Api_Customer extends Emarsys_Suite2_Model_Api_Abstrac
             try {
                 if ($queue = $queueInstance->getNextBunch($this->_getEntity(), $website->getId(), $queue)) {
                     $this->exportBunchData($queue);
+                    $queueInstance->resetPage();
                 }
             } catch (Exception $e) {
                 $this->log('Got exception when iterating batch: ' . $e->getMessage());

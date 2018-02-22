@@ -114,13 +114,16 @@ class Emarsys_Suite2_Model_Observer
         }
 
         $creditmemo = $observer->getCreditmemo();
+        $order = $creditmemo->getOrder();
+
+        if(!Mage::getStoreConfig('emarsys_suite2_smartinsight/settings/enabled', $order->getStoreId())) {
+            return $this;
+        }
         /* @var $creditmemo Mage_Sales_Model_Order_Creditmemo */
         // Don't export creditmemos that were already exported
         if (Mage::getModel('emarsys_suite2/flag_creditmemo', $creditmemo)->getIsExported()) {
             return $this;
         }
-
-        $order = $creditmemo->getOrder();
         
         if ($order->getCustomerIsGuest()
             && !Mage::getStoreConfig('emarsys_suite2_smartinsight/settings/guest_export', $order->getStoreId())) {
@@ -142,6 +145,10 @@ class Emarsys_Suite2_Model_Observer
         }
         
         $order = $observer->getData('order');
+
+        if(!Mage::getStoreConfig('emarsys_suite2_smartinsight/settings/enabled', $order->getStoreId())) {
+            return $this;
+        }
         // Don't export orders that were already exported
         if (Mage::getModel('emarsys_suite2/flag_order', $order)->getIsExported()) {
             return $this;
@@ -158,7 +165,7 @@ class Emarsys_Suite2_Model_Observer
         // if order is paid, queue it up and export customer //
         if (in_array($order->getState(), Mage::helper('emarsys_suite2')->getPaidOrderStates())) {
             Mage::getModel('emarsys_suite2/queue')->addEntity($order);
-        }
+	}
 
         if (($customerId = $order->getCustomerId()) && 
                 ($customer = Mage::getModel('customer/customer')->load($customerId)) &&
@@ -674,5 +681,43 @@ class Emarsys_Suite2_Model_Observer
             );
         }
     }
-    
+
+    /**
+     * Schedule the Order Export Job
+     */
+    public function exportOrdersScheduler(Varien_Event_Observer $observer)
+    {
+        try {
+            if ($this->_isEnabled()) {
+                $canSchedule = false;
+                $maxRecordsCount = Mage::getStoreConfig('emarsys_suite2_smartinsight/api/max_records_per_export');
+                if(!empty($maxRecordsCount)) {
+                    if(is_numeric($maxRecordsCount)) {
+                        $entity = Mage::getSingleton('sales/order');
+                        $queue = Mage::getModel('emarsys_suite2/queue');
+                        $queue->addEntityTypeId($entity);
+                        $orderEntityTypeId = $entity->getEntityTypeId();
+
+                        $entity = Mage::getSingleton('sales/order_creditmemo');
+                        $queue->addEntityTypeId($entity);
+                        $creditMemoEntityTypeId =  $entity->getEntityTypeId();
+
+                        $entityTypes = array($orderEntityTypeId, $creditMemoEntityTypeId);
+
+                        // We may need to run this through each WebSite TBD
+                        $count = Mage::getModel('emarsys_suite2/queue')->getCollection()->addFieldToFilter('entity_type_id', array("in" => $entityTypes) )->count();
+                        if ($count >= $maxRecordsCount) {
+                            $canSchedule = true;
+                        }
+                    }
+                }
+
+                if ($canSchedule) {
+                    Mage::helper('emarsys_suite2/adminhtml')->scheduleCronjob('orders');
+                }
+            }
+        } catch (Exception $e){
+            Mage::log('Exception Error: Method(Suite2_Observer::exportOrdersScheduler) => ' . $e->getMessage(), LOG_CRIT, 'emarsys.log', true);
+        }
     }
+}

@@ -44,6 +44,8 @@ class Emarsys_Suite2_Model_Api_Payload_Customer_Item extends Emarsys_Suite2_Mode
                     $value = $address->getData($addressAttributeCode);
                     if ($addressAttributeCode == 'country_id') {
                         $value = (isset($mappedCountries[$value]) ? $mappedCountries[$value] : $value);
+                    } elseif ($addressAttributeCode == 'street') {
+                        $value = str_replace("\n", ',', $address->getData($addressAttributeCode));
                     }
                 }
             } elseif (strpos($attributeCode, 'default_shipping_') === 0) {
@@ -52,6 +54,8 @@ class Emarsys_Suite2_Model_Api_Payload_Customer_Item extends Emarsys_Suite2_Mode
                     $value = $address->getData($addressAttributeCode);
                     if ($addressAttributeCode == 'country_id') {
                         $value = (isset($mappedCountries[$value]) ? $mappedCountries[$value] : $value);
+                    } elseif ($addressAttributeCode == 'street') {
+                        $value = str_replace("\n", ',', $address->getData($addressAttributeCode));
                     }
                 }
             } else {

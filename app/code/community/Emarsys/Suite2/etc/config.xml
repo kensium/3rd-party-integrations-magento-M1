@@ -2,7 +2,7 @@
 <config>
     <modules>
         <Emarsys_Suite2>
-            <version>0.2.3</version>
+            <version>0.2.4</version>
         </Emarsys_Suite2>
     </modules>
     <global>
@@ -177,6 +177,11 @@
         </enterprise>
     </frontend>
     <default>
+        <emarsys_suite2_about>
+             <info>
+                <api_url>https://api.github.com/repos/emartech/3rd-party-integrations-magento-M1/releases/latest</api_url>
+             </info>
+        </emarsys_suite2_about>
         <emarsys_suite2_contacts_sync>
             <settings>
                 <sync_order>luexim</sync_order>
@@ -201,6 +206,13 @@
                 <ssl>1</ssl>
                 <passive>1</passive>
             </ftp>
+            <api>
+                <crontab>0,30 * * * *</crontab>
+                <smartinsight_api_url>https://admin.scarabresearch.com/hapi/merchant/</smartinsight_api_url>
+                <smartinsight_order_api_url_key>/sales-data/api</smartinsight_order_api_url_key>
+                <smartinsight_product_api_url_key>/catalog/api</smartinsight_product_api_url_key>
+                <max_records_per_export_option>100,500,1000,3000,5000,10000</max_records_per_export_option>
+            </api>
             <settings>
                 <crontab>20 0 * * *</crontab>
                 <bundle_price_calculated>1</bundle_price_calculated>
@@ -235,6 +247,9 @@
                             <children>
                                 <config>
                                     <children>
+                                        <emarsys_suite2_about translate="title" module="emarsys_suite2">
+                                            <title>About Emarsys Extension</title>
+                                        </emarsys_suite2_about>
                                         <emarsys_suite2 translate="title" module="emarsys_suite2">
                                             <title>Emarsys Suite settings</title>
                                         </emarsys_suite2>
@@ -315,6 +330,14 @@
                     <model>emarsys_suite2/observer::exportOrders</model>
                 </run>
             </emarsys_suite2_cron_export_orders>
+            <emarsys_suite2_cron_export_orders_scheduler>
+                <schedule>
+                    <config_path>emarsys_suite2_smartinsight/api/crontab</config_path>
+                </schedule>
+                <run>
+                    <model>emarsys_suite2/observer::exportOrdersScheduler</model>
+                </run>
+            </emarsys_suite2_cron_export_orders_scheduler>
             <emarsys_suite2_cron_import_subscribers>
                 <schedule>
                     <cron_expr>10 0 * * *</cron_expr>

@@ -52,11 +52,28 @@ class Emarsys_Suite2_Adminhtml_Suite2Controller extends Mage_Adminhtml_Controlle
      */
     protected function _getBackendFields($groupName)
     {
+        $allparams = $this->getRequest()->getParams();
+        $storeId = 0;
+        if(isset($allparams['website'])) {
+            $website = Mage::app()->getWebsite($allparams['website']);
+            $storeId = $website->getDefaultStore()->getId();
+        }
+
         $params = $this->getRequest()->getParam('groups');
         $result = array();
         if (isset($params[$groupName])) {
             foreach ($params[$groupName]['fields'] as $field => $value) {
-                $result[$field] = $value['value'];
+                if(isset($value['value'])) {
+                    $result[$field] = $value['value'];
+                } elseif(isset($value['inherit'])) {
+                    if($value['inherit']) {
+                        if($storeId) {
+                            $result[$field] = Mage::getStoreConfig($allparams['section'] . "/" . $groupName . "/" . $field, $storeId);
+                        } else {
+                            $result[$field] = Mage::getStoreConfig($allparams['section'] . "/" . $groupName . "/" . $field);
+                        }
+                    }
+                }
             }
         }
 
@@ -93,6 +110,39 @@ class Emarsys_Suite2_Adminhtml_Suite2Controller extends Mage_Adminhtml_Controlle
     {
         return Mage::getSingleton('emarsys_suite2/api_order')->testFtp($params);
     }
+
+    /**
+     * Pings API
+     *
+     * @param array $params
+     *
+     * @return string
+     */
+    protected function _pingSmartinsightApi($params)
+    {
+        return Mage::getSingleton(
+            'emarsys_suite2/apiexport',
+            array(
+                'merchant_id'  => $params['merchant_id'],
+                'token'  => $params['token'],
+            )
+        )->testSIExportApi($params);
+    }
+
+    /**
+     * @param $params
+     * @return mixed
+     */
+    protected function _pingCatalogexportApi($params)
+    {
+        return Mage::getSingleton(
+            'emarsys_suite2/apiexport',
+            array(
+                'merchant_id'  => $params['merchant_id'],
+                'token'  => $params['token'],
+            )
+        )->testFullCatalogExportApi($params);
+    }
     
     /**
      * Pings target server action
@@ -104,13 +154,39 @@ class Emarsys_Suite2_Adminhtml_Suite2Controller extends Mage_Adminhtml_Controlle
         // get the last underscored element name to get the array key //
         $_tmp = explode('_', $target);
         $targetGroupName = array_pop($_tmp);
-        
+
         $params = $this->_getBackendFields($targetGroupName);
         $methodName = '_ping' . uc_words($target, '');
         
         if (method_exists($this, $methodName)) {
             try {
                 printf($this->$methodName($params));
+            } catch (Exception $e) {
+                printf($e->getMessage());
+            }
+        } else {
+            printf('Method is not defined in controller: ' . $methodName);
+        }
+    }
+
+    /**
+     * Pings target server action
+     */
+    public function apiPingAction()
+    {
+        $target = str_replace('emarsys_suite2_', '', $this->getRequest()->getParam('target'));
+
+        // get the last underscored element name to get the array key //
+        $_tmp = explode('_', $target);
+        $targetGroupName = array_pop($_tmp);
+
+        $params = $this->_getBackendFields($targetGroupName);
+        $allparams = $this->getRequest()->getParams();
+        $methodName = '_ping' . uc_words($target, '');
+
+        if (method_exists($this, $methodName)) {
+            try {
+                printf($this->$methodName(array_merge($allparams, $params)));
             } catch (Exception $e) {
                 printf($e->getMessage());
             }
@@ -187,30 +263,12 @@ class Emarsys_Suite2_Adminhtml_Suite2Controller extends Mage_Adminhtml_Controlle
                 $result = true;
             }
 
-            $pageNum = 0;
-            while ($this->_queueCollectionBatch(
-                Mage::getResourceModel('customer/customer_collection')
-                    ->joinField('subscriber_id', 'newsletter/subscriber', 'subscriber_id', 'customer_id = entity_id'),
-                $pageNum++
-            )) {
-                $result = true;
-            }
-
             if ($result) {
                 Mage::helper('emarsys_suite2/adminhtml')->scheduleCronjob('subscribers');
                 printf(1);
             } else {
                 printf('No subscribers found');
             }
-        } catch (Exception $e) {
-            printf("Error: {$e->getMessage()}");
-        }
-    }
-
-    public function exportFullCatalogAction()
-    {
-        try {
-            Mage::getModel('webextend/observer')->consolidatedCatalogExport();
         } catch (Exception $e) {
             printf("Error: {$e->getMessage()}");
         }

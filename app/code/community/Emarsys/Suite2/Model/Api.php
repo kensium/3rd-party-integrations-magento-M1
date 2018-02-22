@@ -86,15 +86,14 @@ class Emarsys_Suite2_Model_Api extends Varien_Http_Client
             array(
                 'Content-Type'      => 'application/json',
                 'Accept-encoding'   => 'utf-8',
-                'X-WSSE'            => $this->_getWSSEHeader(),
-                'Extension-Version' => 'Magento ' . Mage::getVersion() . ' - ' . (string)Mage::getConfig()->getNode()->modules->Emarsys_Suite2->version,
+                'X-WSSE'            => $this->_getWSSEHeader()
             )
         );
         try {
 
             if ($method == "GET" && ! (empty($data))) {
                 $this->setParameterGet($data);
-            } else {
+            }else {
                 if (!empty($data)) {
                     $this->setRawData(Mage::helper('core')->jsonEncode($data));
                 }

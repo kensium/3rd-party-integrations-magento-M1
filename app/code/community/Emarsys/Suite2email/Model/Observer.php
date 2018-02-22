@@ -19,6 +19,9 @@ class Emarsys_Suite2email_Model_Observer extends Emarsys_Suite2_Model_Observer
             $website = Mage::app()->getWebsite($websiteId);
             $websiteCode = $website->getData('code');
             /* Multiwebsite Support*/
+            if(!Mage::getStoreConfig('emarsys_suite2_smartinsight/settings/enabled', $storeId)) {
+                return $this;
+            }
             // Don't export orders that were already exported
             if (Mage::getModel('emarsys_suite2/flag_order', $order)->getIsExported()) {
                 return $this;
@@ -56,40 +59,48 @@ class Emarsys_Suite2email_Model_Observer extends Emarsys_Suite2_Model_Observer
     {
         try {
             //get emarsys events and store it into array
-            $apiEvents = Mage::getSingleton('emarsys_suite2/api_event')->getEvents();
-            $eventArray = array();
-            foreach ($apiEvents as $key => $value) {
-                $eventArray[$key] = $value;
-            }
-            $collection = Mage::getModel('suite2email/emarsysevents')->getCollection();
-            //Check whether Emarsys events count is matching with Magento Emarsys event cound if not then add message into notification
-            if (count($eventArray) != $collection->getSize()) {
-                $link = Mage::helper("adminhtml")->getUrl("adminhtml/suite2email_emarsysevents/index/");
-                $title = 'Found new events in Emarsys. Navigate to Emarsys Email => Emarsys Events and click Update Schema button to pull the latest updates.';
-                Mage::getModel('adminnotification/inbox')->add(4, $title, '', '', true);
-            }
-            //Delete unwanted events exist in database
-            foreach ($collection as $coll) {
-                if (!array_key_exists($coll->getEventId(), $eventArray)) {
-                    $model = Mage::getModel('suite2email/emarsysevents');
-                    $model->setId($coll->getId());
-                    $model->delete();
+            $websites = Mage::app()->getWebsites();
+            foreach($websites as $_websiteId) {
+                $websiteId = $_websiteId->getData('website_id');
+                Mage::getSingleton('emarsys_suite2/config')->setWebsite($websiteId);
+                Mage::helper('emarsys_suite2')->log('Emarsys Event Schema Stared updating for WebsiteId =>'.$websiteId);
+                $apiEvents = Mage::getModel('emarsys_suite2/api_event')->getEvents();
+                $eventArray = array();
+                Mage::helper('emarsys_suite2')->log('Emarsys Event Schema Array for WebsiteId('.$websiteId.') ===>');
+                foreach ($apiEvents as $key => $value) {
+                    $eventArray[$key] = $value;
+                    Mage::helper('emarsys_suite2')->log($key.'=>'.$eventArray[$key]);
                 }
-            }
-            //Update & create new events found in Emarsys
-            foreach ($eventArray as $key => $value) {
-                $collection = Mage::getModel('suite2email/emarsysevents')->getCollection();
-                $collection->addFieldToFilter("event_id", $key);
-                $collection->getFirstItem();
-                if ($collection->getSize()) {
-                    $model = Mage::getModel('suite2email/emarsysevents')->load($key, "event_id");
-                    $model->setEmarsysEvent($value);
-                    $model->save();
-                } else {
-                    $model = Mage::getModel('suite2email/emarsysevents');
-                    $model->setEventId($key);
-                    $model->setEmarsysEvent($value);
-                    $model->save();
+                //Delete unwanted events exist in database
+                $collection = Mage::getModel('suite2email/emarsysevents')->getCollection()->addFieldToFilter('website_id',array('eq'=>$websiteId));
+                foreach ($collection as $coll) {
+                    if (!array_key_exists($coll->getEventId(), $eventArray)) {
+                        $model = Mage::getModel('suite2email/emarsysevents');
+                        $model->load($coll->getId());
+                        $model->delete();
+                        Mage::helper('emarsys_suite2')->log('Deleted unwanted event exist in database, EventId =>'.$coll->getData('event_id').' WebSiteId =>'.$coll->getData('website_id'));
+                    }
+                }
+                //Update & create new events found in Emarsys
+                foreach ($eventArray as $key => $value) {
+                    $collection = Mage::getModel('suite2email/emarsysevents')->getCollection()
+                        ->addFieldToFilter("event_id", $key)
+                        ->addFieldToFilter("website_id", $websiteId);
+                    $firstEvent = $collection->getFirstItem();
+                    if ($collection->getSize() && $firstEvent->getId()) {
+                        $model = Mage::getModel('suite2email/emarsysevents')->load($firstEvent->getId());
+                        $model->setEmarsysEvent($value);
+                        $model->setWebsiteId($websiteId);
+                        $model->save();
+                        Mage::helper('emarsys_suite2')->log('Event exist in database got updated, EventId =>'.$firstEvent->getData('event_id').' WebSiteId =>'.$firstEvent->getData('website_id'));
+                    } else {
+                        $model = Mage::getModel('suite2email/emarsysevents');
+                        $model->setEventId($key);
+                        $model->setEmarsysEvent($value);
+                        $model->setWebsiteId($websiteId);
+                        $model->save();
+                        Mage::helper('emarsys_suite2')->log('Event not exist in database got Created, EventId =>'.$firstEvent->getData('event_id').' WebSiteId =>'.$firstEvent->getData('website_id'));
+                    }
                 }
             }
         } catch (Exception $e) {

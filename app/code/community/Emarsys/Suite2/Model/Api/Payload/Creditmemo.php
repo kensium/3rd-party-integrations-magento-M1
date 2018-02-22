@@ -34,6 +34,10 @@ class Emarsys_Suite2_Model_Api_Payload_Creditmemo extends Emarsys_Suite2_Model_A
         $refundTotal = 0;
         $storeId = $this->_creditmemo->getStoreId();
         $useBaseCurrency = $this->useBaseCurrency($storeId);
+
+        $date = $this->_creditmemo->getCreatedAt();
+        $utcDate = gmdate("Y-m-d\TH:i:s\Z", $date);
+
         foreach ($this->_creditmemo->getAllItems() as $item) {
             /* @var $item Mage_Sales_Model_Order_Creditmemo_Item */
             $useBaseCurrency = $this->useBaseCurrency($storeId);
@@ -46,14 +50,14 @@ class Emarsys_Suite2_Model_Api_Payload_Creditmemo extends Emarsys_Suite2_Model_A
                     $discountAmount = $item->getDiscountAmount();
                 }
                 $data[] = array(
-                    'website_id'    => $this->_getConfig()->getWebsiteId(),
-                    'order'         => $this->_order->getIncrementId(),
-                    'date'          => $this->_creditmemo->getCreatedAt(),
-                    'customer'      => $this->_getCustomerId(),
                     'item'          => $item->getSku(),
+                    'price'         => $this->_formatPrice($useBaseCurrency ? $item->getBasePriceInclTax() : $item->getPriceInclTax()),
+                    'order'         => $this->_order->getIncrementId(),
+                    'timestamp'     => $utcDate,
+                    'customer'      => $this->_getCustomerId(),
                     'quantity'      => $item->getQty(),
-                    'unit_price'    => $this->_formatPrice($useBaseCurrency ? $item->getBasePriceInclTax() : $item->getPriceInclTax()),
-                    'c_sales_amount'=> $this->_formatPrice(-($rowTotal - $discountAmount)),
+                    'f_c_sales_amount'=> $this->_formatPrice(-($rowTotal - $discountAmount)),
+                    'i_website_id'    => $this->_getConfig()->getWebsiteId(),
                 );
                 $refundTotal += $rowTotal;
             }
@@ -61,14 +65,14 @@ class Emarsys_Suite2_Model_Api_Payload_Creditmemo extends Emarsys_Suite2_Model_A
 
         if ($useBaseCurrency ? (float)$this->_creditmemo->getBaseAdjustment() : (float)$this->_creditmemo->getAdjustment()) {
             $data[] = array(
-                    'website_id'    => $this->_getConfig()->getWebsiteId(),
-                    'order'         => $this->_order->getIncrementId(),
-                    'date'          => $this->_creditmemo->getCreatedAt(),
-                    'customer'      => $this->_getCustomerId(),
                     'item'          => 0,
+                    'price'         => $this->_formatPrice($useBaseCurrency ? $this->_creditmemo->getBaseAdjustment() : $this->_creditmemo->getAdjustment()),
+                    'order'         => $this->_order->getIncrementId(),
+                    'timestamp'     => $this->_creditmemo->getCreatedAt(),
+                    'customer'      => $this->_getCustomerId(),
                     'quantity'      => 1,
-                    'unit_price'    => $this->_formatPrice($useBaseCurrency ? $this->_creditmemo->getBaseAdjustment() : $this->_creditmemo->getAdjustment()),
-                    'c_sales_amount'=> $this->_formatPrice($useBaseCurrency ? -$this->_creditmemo->getBaseAdjustment() : -$this->_creditmemo->getAdjustment()),
+                    'f_c_sales_amount'=> $this->_formatPrice($useBaseCurrency ? -$this->_creditmemo->getBaseAdjustment() : -$this->_creditmemo->getAdjustment()),
+                    'i_website_id'    => $this->_getConfig()->getWebsiteId(),
                 );
         }
 

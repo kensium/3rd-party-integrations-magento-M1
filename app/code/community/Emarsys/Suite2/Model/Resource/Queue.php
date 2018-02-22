@@ -62,12 +62,13 @@ class Emarsys_Suite2_Model_Resource_Queue extends Mage_Core_Model_Resource_Db_Ab
     {
         $items = array();
         foreach ($collection as $entity) {
+            
             if (!$entity->getEntityTypeId()) {
                 Mage::getSingleton('emarsys_suite2/queue')->addEntityTypeId($entity);
             }
 
             if ($entity->getWebsiteId() === null) {
-                $entity->setWebsiteId(Mage::app()->getStore($entity->getStoreId())->getWebsiteId());
+                    $entity->setWebsiteId(Mage::app()->getStore($entity->getStoreId())->getWebsiteId());
             }
 
             if ($entity->getWebsiteId()) {

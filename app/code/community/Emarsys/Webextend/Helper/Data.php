@@ -8,8 +8,8 @@
  */
 class Emarsys_Webextend_Helper_Data extends Mage_Core_Helper_Abstract
 {
-    const XML_PATH_AJAX_UPDATE_ENABLED = 'webextendsection/webextendoptions/ajaxupdate';
-    const XML_PATH_USE_JQUERY_ENABLED = 'webextendsection/webextendoptions/usejquery';
+    const XML_PATH_AJAX_UPDATE_ENABLED   = 'webextendsection/webextendoptions/ajaxupdate';
+    const XML_PATH_USE_JQUERY_ENABLED   = 'webextendsection/webextendoptions/usejquery';
 
     /**
      * Static Array of Required Emarsys attribute Fields
@@ -17,17 +17,16 @@ class Emarsys_Webextend_Helper_Data extends Mage_Core_Helper_Abstract
      */
     public function getStaticFieldArray()
     {
-        $emarsysRequiredAttributes = array('Item', 'Title', 'Link', 'Image', 'Category', 'Price', 'MSRP', 'Available', 'Brand', 'Description', 'Zoom image');
-        return $emarsysRequiredAttributes;
+        return array('Item', 'Title', 'Link', 'Image', 'Category', 'Price', 'MSRP', 'Available', 'Brand', 'Description', 'Zoom_image');
     }
 
     /**
      * get Static Export Array for Emarsys
      * @return array
      */
-    public function getStaticExportArray()
+    public function getstaticExportArray()
     {
-        $staticExportArray = array("item", "available", "title", "link", "image", "category", "price");
+        $staticExportArray = array("Item", "Available", "Title", "Link", "Image", "Category", "Price");
         return $staticExportArray;
     }
 
@@ -35,7 +34,7 @@ class Emarsys_Webextend_Helper_Data extends Mage_Core_Helper_Abstract
      * get Static Export Array for Magento
      * @return array
      */
-    public function getStaticMagentoAttributeArray()
+    public function getstaticMagentoAttributeArray()
     {
         $staticMagentoAttributeArray = array("sku", "is_saleable", "name", "url_key", "image", "category_ids", "price");
         return $staticMagentoAttributeArray;
@@ -43,15 +42,15 @@ class Emarsys_Webextend_Helper_Data extends Mage_Core_Helper_Abstract
 
     /**
      * Moving File to FTP
-     * @param $storeId
+     * @param $websiteId
      * @param $outputFile
      * @param $ftpConnection
      * @param $filePath
      */
-    public function moveToFTP($storeId, $outputFile, $ftpConnection, $filePath)
+    public function moveToFTP($websiteId, $outputFile, $ftpConnection, $filePath)
     {
-        $bulkDir = Mage::getStoreConfig('emarsys_suite2_smartinsight/ftp/dir', $storeId);
-        $passiveMode = Mage::getStoreConfig('emarsys_suite2_smartinsight/ftp/passive', $storeId);
+        $bulkDir = Mage::getStoreConfig('emarsys_suite2_smartinsight/ftp/dir', $websiteId);
+        $passiveMode = Mage::getStoreConfig('emarsys_suite2_smartinsight/ftp/passive', $websiteId);
 
         $remoteDirPath = $bulkDir;
         if ($remoteDirPath == '/') {
@@ -70,6 +69,7 @@ class Emarsys_Webextend_Helper_Data extends Mage_Core_Helper_Abstract
         try {
             @ftp_put($ftpConnection, $remoteFileName, $filePath, FTP_ASCII);
             unlink($filePath);
+            Mage::helper('emarsys_suite2')->log("Full Catalog Exported successfully using FTP.", $this);
         } catch (Exception $e) {
             Mage::helper('emarsys_suite2')->log($e->getMessage(), $this);
         }

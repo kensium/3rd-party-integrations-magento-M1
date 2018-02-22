@@ -5,14 +5,51 @@
             <label>Emarsys connect</label>
             <sort_order>450</sort_order>
         </emarsys>
-    </tabs> 
-    
+    </tabs>
     <sections>
+        <emarsys_suite2_about translate="label" module="emarsys_suite2">
+            <label>About Emarsys Extension</label>
+            <tab>emarsys</tab>
+            <frontend_type>text</frontend_type>
+            <sort_order>12</sort_order>
+            <show_in_default>1</show_in_default>
+            <show_in_website>0</show_in_website>
+            <show_in_store>0</show_in_store>
+            <groups>
+                    <info translate="label">
+                    <label>Version Information</label>
+                    <expanded>true</expanded>
+                    <frontend_type>text</frontend_type>
+                    <sort_order>1</sort_order>
+                    <show_in_default>1</show_in_default>
+                    <show_in_website>0</show_in_website>
+                    <show_in_store>0</show_in_store>
+                    <fields>
+                        <infotab translate="label">
+                            <label>About</label>
+                            <frontend_type>textarea</frontend_type>
+                            <sort_order>10</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>0</show_in_website>
+                            <show_in_store>0</show_in_store>
+                            <frontend_model>emarsys_suite2/adminhtml_system_config_about</frontend_model>
+                        </infotab>
+                        <api_url>
+                            <frontend_type>hidden</frontend_type>
+                            <sort_order>30</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>0</show_in_website>
+                            <show_in_store>0</show_in_store>
+                        </api_url>
+                    </fields>
+                </info>
+             </groups>
+        </emarsys_suite2_about>
         <emarsys_suite2 translate="label" module="emarsys_suite2">
             <label>Suite settings</label>
             <tab>emarsys</tab>
             <frontend_type>text</frontend_type>
-            <sort_order>10</sort_order>
+            <sort_order>15</sort_order>
             <show_in_default>1</show_in_default>
             <show_in_website>1</show_in_website>
             <show_in_store>1</show_in_store>
@@ -251,8 +288,8 @@
                             <source_model>adminhtml/system_config_source_yesno</source_model>
                         </subscriberslist_export_enabled>
                         <export_subscribers_button translate="button_label">
-                            <button_label>Export subscribers</button_label>
-                            <confirm_message>Do you want to export ALL subscribers?</confirm_message>
+                            <button_label>Sync Subscription Values</button_label>
+                            <confirm_message>Do you want to sync ALL subscribers?</confirm_message>
                             <frontend_model>emarsys_suite2/adminhtml_system_config_button</frontend_model>
                             <target_call>exportSubscribers</target_call>
                             <sort_order>22</sort_order>
@@ -550,6 +587,66 @@
                         </ping>
                     </fields>
                 </ftp>
+                <api translate="label">
+                    <label>API Settings</label>
+                    <frontend_type>text</frontend_type>
+                    <sort_order>502</sort_order>
+                    <show_in_default>1</show_in_default>
+                    <show_in_website>1</show_in_website>
+                    <show_in_store>0</show_in_store>
+                    <fields>
+                        <enableapi translate="label">
+                            <label>Enable API Export</label>
+                            <frontend_type>select</frontend_type>
+                            <sort_order>0</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>1</show_in_website>
+                            <show_in_store>0</show_in_store>
+                            <source_model>adminhtml/system_config_source_yesno</source_model>
+                            <comment>If API Export is enabled, the SI export uses API POST instead of FTP.</comment>
+                        </enableapi>
+                        <merchant_id>
+                            <label>Merchant Id</label>
+                            <frontend_type>text</frontend_type>
+                            <sort_order>10</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>1</show_in_website>
+                            <show_in_store>0</show_in_store>
+                            <depends><enableapi>1</enableapi></depends>
+                        </merchant_id>
+                        <token>
+                            <label>Bearer Token</label>
+                            <frontend_type>text</frontend_type>
+                            <sort_order>20</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>1</show_in_website>
+                            <show_in_store>0</show_in_store>
+                            <depends><enableapi>1</enableapi></depends>
+                        </token>
+                        <max_records_per_export>
+                            <label>Maximum Records</label>
+                            <frontend_type>select</frontend_type>
+                            <sort_order>30</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>1</show_in_website>
+                            <show_in_store>0</show_in_store>
+                            <source_model>emarsys_suite2/system_config_maxrecord</source_model>
+                            <depends><enableapi>1</enableapi></depends>
+                            <comment>Maximum Number of records per export.</comment>
+                        </max_records_per_export>
+                        <ping translate="button_label">
+                            <button_label>Test connection</button_label>
+                            <frontend_model>emarsys_suite2/adminhtml_system_config_button_apipinger</frontend_model>
+                            <target>emarsys_suite2_smartinsight_api</target>
+                            <target_group_name>api</target_group_name>
+                            <sort_order>60</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>1</show_in_website>
+                            <show_in_store>0</show_in_store>
+                            <depends><enableapi>1</enableapi></depends>
+                        </ping>
+                    </fields>
+                </api>
             </groups>
         </emarsys_suite2_smartinsight>
                 

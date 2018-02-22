@@ -10,7 +10,7 @@
 <config>
     <modules>
         <Emarsys_Webextend>
-            <version>0.2.3</version>
+            <version>0.2.4</version>
         </Emarsys_Webextend>
     </modules>
     <admin>
@@ -49,9 +49,6 @@
                     <emarsysproductattributesmapping>
                         <table>emarsys_product_attributes_mapping</table>
                     </emarsysproductattributesmapping>
-                    <emarsysproductexport>
-                        <table>emarsys_product_export</table>
-                    </emarsysproductexport>
                 </entities>
             </webextend_mysql4>
         </models>
@@ -148,9 +145,9 @@
                                         <webextendsection>
                                             <title>WebExtend</title>
                                         </webextendsection>
-                                        <vcatalogexport>
+                                        <catalogexport>
                                             <title>Full Catalog Export</title>
-                                        </vcatalogexport>
+                                        </catalogexport>
                                     </children>
                                 </config>
                             </children>
@@ -192,7 +189,7 @@
                     <cron_expr>0 1 * * *</cron_expr>
                 </schedule>
                 <run>
-                    <model>webextend/observer::consolidatedCatalogExport</model>
+                    <model>webextend/observer::catalogExport</model>
                 </run>
             </emarsys_suite2_cron_export_products>
         </jobs>
@@ -208,10 +205,5 @@
                 <tax_included>0</tax_included>
             </webextendoptions>
         </webextendsection>
-        <catalogexport>
-            <configurable_cron>
-                <type>1</type>
-            </configurable_cron>
-        </catalogexport>
     </default>
 </config>

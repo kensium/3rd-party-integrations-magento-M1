@@ -27,7 +27,7 @@ class Emarsys_Webextend_Block_Webextend extends Mage_Core_Block_Template
 
     /**
      * @return string
-     * Get logged in customer email
+     * Get logged in customer getCustomerEmailAddress
      */
     public function getLoggedInCustomerEmail()
     {
@@ -92,13 +92,36 @@ class Emarsys_Webextend_Block_Webextend extends Mage_Core_Block_Template
                 $order = Mage::getModel('sales/order')->load($_orderId);
                 $orderData = array();
                 foreach ($order->getAllVisibleItems() as $item) {
+                    $product = Mage::getModel('catalog/product')->load($item->getProductId());
                     $qty = $item->getQtyOrdered();
-                    if($taxIncluded) {
-                        $price = $useBaseCurrency? ($item->getBaseRowTotal()  + $item->getBaseTaxAmount()) - $item->getBaseDiscountAmount() : ($item->getRowTotal() + $item->getTaxAmount()) - $item->getDiscountAmount();
+                    if (($item->getProductType()=='bundle') && (!$product->getPriceType())) {
+                        $collection = Mage::getResourceModel('sales/order_item_collection')
+                            ->addAttributeToFilter('parent_item_id', array('eq' => $item['item_id']))->load();
+                        $bundlePrice = 0;
+
+                        foreach ($collection as $collPrice) {
+                            $bundlePrice += $collPrice['base_discount_amount'];
+                        }
+                        if ($taxIncluded) {
+                            $price = $useBaseCurrency? ($item->getBaseRowTotal()  + $item->getBaseTaxAmount()) - ($bundlePrice) : ($item->getRowTotal() + $item->getTaxAmount()) - ($bundlePrice);
+                        } else {
+                            $price = $useBaseCurrency? $item->getBaseRowTotal() - $bundlePrice : $item->getRowTotal() - $bundlePrice;
+                        }
                     } else {
-                        $price = $useBaseCurrency? $item->getBaseRowTotal() - $item->getBaseDiscountAmount() : $item->getRowTotal() - $item->getDiscountAmount();
+                        if($taxIncluded) {
+                            $price = $useBaseCurrency? ($item->getBaseRowTotal()  + $item->getBaseTaxAmount()) - $item->getBaseDiscountAmount() : ($item->getRowTotal() + $item->getTaxAmount()) - $item->getDiscountAmount();
+                        } else {
+                            $price = $useBaseCurrency? $item->getBaseRowTotal() - $item->getBaseDiscountAmount() : $item->getRowTotal() - $item->getDiscountAmount();
+                        }
                     }
-                    $sku = $item->getSku();
+
+                    $uniqueIdentifier = Mage::getStoreConfig('webextendsection/webextendoptions/uniqueidentifier');
+                    if ($uniqueIdentifier == "product_id") {
+                        $sku = $item->getProductId();
+
+                    } else {
+                        $sku = addslashes($item->getSku());
+                    }
                     $orderData[] = "{item: '" . addslashes($sku) . "', price: $price, quantity: $qty}";
                 }
                 $result[$order->getIncrementId()] = $orderData;
@@ -134,9 +157,7 @@ class Emarsys_Webextend_Block_Webextend extends Mage_Core_Block_Template
                             $pathIndex++;
                             continue;
                         }
-                        $childCat = Mage::getModel('catalog/category')
-                            ->setStoreId(Mage::app()->getWebsite()->getDefaultStore()->getId())
-                            ->load($categoryPathId);
+                        $childCat = Mage::getModel('catalog/category')->load($categoryPathId);
                         $childCats[] = addslashes($childCat->getName());
                     }
                     $categoryName = implode(" > ", $childCats);
@@ -250,7 +271,13 @@ class Emarsys_Webextend_Block_Webextend extends Mage_Core_Block_Template
                     if ($item->getParentItemId()) {
                         continue;
                     }
-                    $productSku = $this->getLoadProduct($item->getProductId())->getSku();
+                    $uniqueIdentifier = Mage::getStoreConfig('webextendsection/webextendoptions/uniqueidentifier');
+                    if ($uniqueIdentifier == "product_id") {
+                        $productSku = $item->getProductId();
+
+                    } else {
+                        $productSku = addslashes($item->getSku());
+                    }
                     $price = $useBaseCurrency? $item->getBaseRowTotal() : $item->getRowTotal();
                     $qty = $item->getQty();
                     $jsData[] = "{item: '" . addslashes($productSku) . "', price: $price, quantity: $qty}";

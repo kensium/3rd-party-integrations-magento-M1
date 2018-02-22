@@ -36,26 +36,30 @@ class Emarsys_Suite2_Model_Api_Payload_Order extends Emarsys_Suite2_Model_Api_Pa
         }
         $storeId = $this->_order->getStoreId();
         $useBaseCurrency = $this->useBaseCurrency($storeId);
-        $customerId = $this->_getCustomerId();
+        //$customerId = $this->_getCustomerId();
         $orderId = $this->_order->getRealOrderId();
+
+        $date = $this->_order->getCreatedAt();
+        $utcDate = gmdate("Y-m-d\TH:i:s\Z", $date);
+
         $data = array();
         foreach ($this->_order->getAllVisibleItems() as $item) {
             /* @var $item Mage_Sales_Model_Order_Item */
             $dataItem = array(
-                'website_id'    => $this->_getConfig()->getWebsiteId(),
-                'order'         => $orderId,
-                'date'          => $this->_order->getCreatedAt(),
-                'customer'      => $customerId,
                 'item'          => $item->getSku(),
+                'price'         => $this->_formatPrice($useBaseCurrency? $item->getBasePriceInclTax() : $item->getPriceInclTax()),
+                'order'         => $orderId,
+                'timestamp'     => $utcDate,
+                'customer'      => $this->_getCustomerId(),
                 'quantity'      => $item->getQtyInvoiced(),
-                'unit_price'    => $this->_formatPrice($useBaseCurrency? $item->getBasePriceInclTax() : $item->getPriceInclTax()),
-                'c_sales_amount'=> $this->_formatPrice($useBaseCurrency? $item->getBaseRowTotalInclTax() - $item->getBaseDiscountAmount() : $item->getRowTotalInclTax() - $item->getDiscountAmount()),
+                'f_c_sales_amount'=> $this->_formatPrice($useBaseCurrency? $item->getBaseRowTotalInclTax() - $item->getBaseDiscountAmount() : $item->getRowTotalInclTax() - $item->getDiscountAmount()),
+                'i_website_id'    => $this->_getConfig()->getWebsiteId(),
             );
             if ($item->getProductType() == 'bundle') {
                 if (!$_bundlePrice) {
                     // calculated bundle price, items must have bundle prices
-                    $dataItem['unit_price'] = $this->_formatPrice(0);
-                    $dataItem['c_sales_amount'] = $this->_formatPrice(0);
+                    $dataItem['price'] = $this->_formatPrice(0);
+                    $dataItem['f_c_sales_amount'] = $this->_formatPrice(0);
                 }
 
                 if ($_bundleIncluded) {
@@ -75,8 +79,8 @@ class Emarsys_Suite2_Model_Api_Payload_Order extends Emarsys_Suite2_Model_Api_Pa
                     } else {
                         $rowTotalIncludingTax = $_item->getRowTotalInclTax();
                     }
-                    $_dataItem['unit_price'] = $this->_formatPrice(($_bundlePrice ? 0 :$priceIncludingTax));
-                    $_dataItem['c_sales_amount'] = $this->_formatPrice(($_bundlePrice ? 0 :$rowTotalIncludingTax));
+                    $_dataItem['price'] = $this->_formatPrice(($_bundlePrice ? 0 :$priceIncludingTax));
+                    $_dataItem['f_c_sales_amount'] = $this->_formatPrice(($_bundlePrice ? 0 :$rowTotalIncludingTax));
                     $data[] = $_dataItem;
                 }
             } else {

@@ -18,6 +18,7 @@ class Emarsys_Suite2_Helper_Country
         'St. Lucia'         => 'LC',
         'St. Vincent and The Grenadines' => 'VC',
         'United States of America' => 'US',
+	'Belgium'		=> 'BE'
     );
     
     protected function _getMapping()

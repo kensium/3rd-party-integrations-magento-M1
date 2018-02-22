@@ -1,6 +1,4 @@
 <?php
-/** @var Emarsys_Webextend_Block_Webextend $this */
-
 $merchantId = $this->getMerchantId();
 $webExtendStatus = $this->getWebExtendEnabled();
 ?>
@@ -22,14 +20,12 @@ $webExtendStatus = $this->getWebExtendEnabled();
         <script>ScarabQueue.push(['testMode']);</script>
     <?php endif;?>
 
-    <?php $currentCategory = $this->getCurrentCategory(); ?>
-    <?php if ($currentCategory != ''): ?>
-        <script>ScarabQueue.push(['category', '<?php echo $currentCategory; ?>']);</script>
+    <?php if ($this->getCurrentCategory() != ''): ?>
+        <script>ScarabQueue.push(['category', '<?php echo $this->getCurrentCategory();?>']);</script>
     <?php endif; ?>
 
-    <?php $currentProductSku = $this->getCurrentProductSku(); ?>
-    <?php if ($currentProductSku != ''): ?>
-        <script>ScarabQueue.push(['view', '<?php echo $currentProductSku; ?>']);</script>
+    <?php if ($this->getCurrentProductSku() != ''): ?>
+        <script>ScarabQueue.push(['view', '<?php echo $this->getCurrentProductSku();?>']);</script>
     <?php endif; ?>
 
     <?php if ($this->getSearchResult() != ''): ?>
@@ -45,7 +41,7 @@ $webExtendStatus = $this->getWebExtendEnabled();
             document.observe("dom:loaded", function() {
                 var unique_key_value = Math.random()*Math.random();
                 new Ajax.Request('<?php echo $this->getAjaxUpdateUrl() ?>', {
-                    method:'post',
+                    method:'get',
                     evalJS: true,
                     parameters: {unique_key: unique_key_value},
                     onSuccess: function(transport) {

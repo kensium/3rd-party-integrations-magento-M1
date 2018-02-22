@@ -8,18 +8,14 @@
  */
 class Emarsys_Suite2email_Helper_Data extends Mage_Core_Helper_Abstract
 {
-    /**
-     * Getting order status and returning as an array.
-     *
-     * @param $websiteCode
-     * @return array
+    /**Getting order status and returning as an array.
      */
     public function getOrderStatuses($websiteCode)
     {
         try {
-            $website = Mage::app()->getWebsite($websiteCode);
-            $orderStatuses = $website->getConfig('emarsys_suite2_smartinsight/statuses_selection/order_export_status');
-            return explode(",", $orderStatuses);
+            $orderStatuses = Mage::getConfig()->getNode('websites/' . $websiteCode . '/emarsys_suite2_smartinsight/statuses_selection/order_export_status');
+            $orderStatusesArr = explode(",", $orderStatuses);
+            return $orderStatusesArr;
         } catch (Exception $e) {
             Mage::helper('emarsys_suite2')->log($e->getMessage(), $this);
         }
@@ -27,7 +23,6 @@ class Emarsys_Suite2email_Helper_Data extends Mage_Core_Helper_Abstract
 
     /**
      * Get the Substring with start and end expression
-     *
      * @param $haystack
      * @param string $start
      * @param string $end
@@ -52,42 +47,53 @@ class Emarsys_Suite2email_Helper_Data extends Mage_Core_Helper_Abstract
 
     /**
      * Getting placeholders from template
-     *
      * @param string $variable
-     * @return string|void
      */
-    public function getPlaceholderName($variable = '')
+    public function getPlacheloderName($variable = '')
     {
         try {
-            if (empty($variable)
-                || in_array($variable, array("{{/if}}", "{{/depend}}", "{{else}}", "{{var non_inline_styles}}"))
-                || strstr($variable, 'inlinecss')
-            ) {
+            if (empty($variable)) {
                 return;
             }
 
-            $findReplace = array(
-                " "     => "_",
-                ".get"  => "_",
-                "."     => "_",
-                "{{"    => "_",
-                "}}"    => "_",
-                "()"    => "_",
-                "("     => "_",
-                ")"     => "_",
-                "=$"    => "_",
-                "="     => "_",
-                "/"     => "_",
-                "$"     => "_",
-                "|"     => "_",
-                "___"   => "_",
-                "__"    => "_",
-                "'"     => "",
-                '"'     => "",
-                "var"   => "",
-            );
+            $skipVars = array("{{/if}}", "{{/depend}}", "{{else}}", "{{var non_inline_styles}}");
+            if (in_array($variable, $skipVars)) {
+                return;
+            }
 
-            $emarsysVariable = str_replace(array_keys($findReplace), $findReplace, strtolower($variable));
+            $skipMatchingVars = array("template", "inlinecss");
+            foreach ($skipMatchingVars as $skipMatchingVar) {
+                if (strstr($variable, $skipMatchingVar)) {
+                    return;
+                }
+            }
+
+            $replaceWords = array();
+            $replaceWords[] = array('find' => "var ", 'replace' => '');
+            $replaceWords[] = array('find' => " ", 'replace' => '_');
+            $replaceWords[] = array('find' => ".get", 'replace' => '_');
+            $replaceWords[] = array('find' => ".", 'replace' => '_');
+            $replaceWords[] = array('find' => "{{", 'replace' => '');
+            $replaceWords[] = array('find' => "}}", 'replace' => '');
+            $replaceWords[] = array('find' => "()", 'replace' => '');
+            $replaceWords[] = array('find' => "('", 'replace' => '_');
+            $replaceWords[] = array('find' => "')", 'replace' => '');
+            $replaceWords[] = array('find' => '="', 'replace' => '_');
+            $replaceWords[] = array('find' => '"_', 'replace' => '_');
+            $replaceWords[] = array('find' => '"', 'replace' => '_');
+            $replaceWords[] = array('find' => '=$', 'replace' => '_');
+            $replaceWords[] = array('find' => '/', 'replace' => '_');
+            $replaceWords[] = array('find' => '=', 'replace' => '_');
+            $replaceWords[] = array('find' => '$', 'replace' => '_');
+            $replaceWords[] = array('find' => '|', 'replace' => '_');
+            $replaceWords[] = array('find' => '___', 'replace' => '_');
+            $replaceWords[] = array('find' => '__', 'replace' => '_');
+
+            $emarsysVariable = strtolower($variable);
+
+            foreach ($replaceWords as $replaceWord) {
+                $emarsysVariable = str_replace($replaceWord['find'], $replaceWord['replace'], $emarsysVariable);
+            }
 
             return trim(trim($emarsysVariable, "_"));
         } catch (Exception $e) {
@@ -109,9 +115,7 @@ class Emarsys_Suite2email_Helper_Data extends Mage_Core_Helper_Abstract
 
     /**
      * Checking readonly magento events
-     *
      * @param int $id
-     * @return bool
      */
     public function isReadonlyMagentoEventId($id = 0)
     {
@@ -128,13 +132,12 @@ class Emarsys_Suite2email_Helper_Data extends Mage_Core_Helper_Abstract
 
     /**
      * Returning default store id.
-     *
      * @return int|mixed
      */
     public function getDefaultStoreID()
     {
         try {
-            return Mage::app()->getWebsite(true)->getDefaultGroup()->getDefaultStoreId();
+            return $iDefaultStoreId = Mage::app()->getWebsite(true)->getDefaultGroup()->getDefaultStoreId();
         } catch (Exception $e) {
             return 0;
         }

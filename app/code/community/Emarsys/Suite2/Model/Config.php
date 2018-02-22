@@ -5,7 +5,18 @@ class Emarsys_Suite2_Model_Config extends Varien_Object
     const SYNC_LAST_UPDATE_OPTIN_CONTACT_EXPORT = 'luexim';
     const SYNC_DAILY_IMPORT_TO_EXPORT = 'imex';
     const SYNC_DAILY_EXPORT_TO_IMPORT = 'exim';
-    
+    const XPATH_EMARSYS_SIEXPORT_API_ENABLED = 'emarsys_suite2_smartinsight/api/enableapi';
+    const XPATH_EMARSYS_SIEXPORT_MERCHANT_ID = 'emarsys_suite2_smartinsight/api/merchant_id';
+    const XPATH_EMARSYS_SIEXPORT_TOKEN = 'emarsys_suite2_smartinsight/api/token';
+    const XPATH_EMARSYS_SIEXPORT_API_URl = 'emarsys_suite2_smartinsight/api/smartinsight_api_url';
+    const XPATH_EMARSYS_SIEXPORT_API_URl_KEY = 'emarsys_suite2_smartinsight/api/smartinsight_order_api_url_key';
+    const XPATH_EMARSYS_CATALOG_EXPORT_API_URl_KEY = 'emarsys_suite2_smartinsight/api/smartinsight_product_api_url_key';
+
+    const XML_PATH_EMARSYS_FULL_CATALOG_EXPORT_ENABLE = 'catalogexport/configurable_cron/fullcatalogexportenabled';
+    const XML_PATH_EMARSYS_CATALOGEXPORT_API_ENABLE   = 'catalogexport/api/enableapi';
+    const XML_PATH_EMARSYS_CATALOGEXPORT_API_MERCHANT_ID   = 'catalogexport/api/merchant_id';
+    const XML_PATH_EMARSYS_CATALOGEXPORT_API_TOKEN   = 'catalogexport/api/token';
+
     protected $_storeId = 0;
     
     protected function _construct()
@@ -285,4 +296,102 @@ class Emarsys_Suite2_Model_Config extends Varien_Object
     {
         return Mage::getStoreConfig('emarsys_suite2_contacts_sync/settings/emarsys_secure_url',$storeId);
     }
+
+
+
+    /** Smart Insight Merchant Id
+     * @param null $storeId
+     * @return mixed
+     */
+    public function isSIAPIExportEnabled()
+    {
+        return Mage::getStoreConfig(self::XPATH_EMARSYS_SIEXPORT_API_ENABLED, $this->_storeId);
+    }
+
+    /** Smart Insight Merchant Id
+     * @param null $storeId
+     * @return mixed
+     */
+    public function getSIExportMerchantId()
+    {
+        return Mage::getStoreConfig(self::XPATH_EMARSYS_SIEXPORT_MERCHANT_ID, $this->_storeId);
+    }
+
+    /** Smart Insight API token
+     * @param null $storeId
+     * @return mixed
+     */
+
+    public function getSIExportToken()
+    {
+        return Mage::getStoreConfig(self::XPATH_EMARSYS_SIEXPORT_TOKEN, $this->_storeId);
+    }
+
+    /** Smart Insight API url
+     * @param null $storeId
+     * @return mixed
+     */
+    public function getSmartInsightApiUrl()
+    {
+        return Mage::getStoreConfig(self::XPATH_EMARSYS_SIEXPORT_API_URl, $this->_storeId);
+    }
+
+    /** Smart Insight Order API url key
+     * @param null $storeId
+     * @return mixed
+     */
+    public function getOrderApiUrlKey()
+    {
+        return Mage::getStoreConfig(self::XPATH_EMARSYS_SIEXPORT_API_URl_KEY, $this->_storeId);
+    }
+
+    /**Smart Insight Product API url key
+     * @param null $storeId
+     * @return mixed
+     */
+    public function getProductApiUrlKey()
+    {
+        return Mage::getStoreConfig(self::XPATH_EMARSYS_CATALOG_EXPORT_API_URl_KEY, $this->_storeId);
+    }
+
+    /**
+     * @return boolean
+     */
+    public function getCatalogExportApiEnable()
+    {
+        return Mage::getStoreConfig(self::XML_PATH_EMARSYS_CATALOGEXPORT_API_ENABLE, $this->_storeId);
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getCatalogExportApiMerchantId()
+    {
+        return Mage::getStoreConfig(self::XML_PATH_EMARSYS_CATALOGEXPORT_API_MERCHANT_ID, $this->_storeId);
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getCatalogExportApiToken()
+    {
+        return Mage::getStoreConfig(self::XML_PATH_EMARSYS_CATALOGEXPORT_API_TOKEN, $this->_storeId);
+    }
+
+    /**
+     * @return boolean
+     */
+    public function getfullCatalogExportEnabled()
+    {
+        return Mage::getStoreConfig(self::XML_PATH_EMARSYS_FULL_CATALOG_EXPORT_ENABLE, $this->_storeId);
+    }
+
+    /**
+     * @return boolean
+     */
+    public function getMaxRecordsPerExportCount()
+    {
+        return Mage::getStoreConfig('emarsys_suite2_smartinsight/api/max_records_per_export', $this->_storeId);
+    }
+
 }
